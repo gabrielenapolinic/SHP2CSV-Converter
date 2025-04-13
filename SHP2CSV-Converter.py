@@ -3,20 +3,20 @@
 
 # In[2]:
 
-
 import geopandas as gpd
 import pandas as pd
 import os
+import warnings
 
 # Configuration
-INPUT_DIR = "ShapefileFolderPath"
-OUTPUT_DIR = "ShapefiletoCSVFolderPath"
+INPUT_DIR = '/home/gabriele/Scrivania/4326'
+OUTPUT_DIR = '/home/gabriele/Scrivania/Napoli_EGU/CSV'
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def convert_shp_to_csv(input_dir, output_dir):
     """
-    Convert all shapefiles to CSV with WKT geometry
+    Convert all shapefiles to CSV with WKT geometry, handling None geometries.
     """
     processed_files = 0
     error_files = 0
@@ -27,12 +27,22 @@ def convert_shp_to_csv(input_dir, output_dir):
             try:
                 print(f"Processing: {filename}")
                 
-                # Read shapefile and convert to DataFrame
+                # Read shapefile
                 gdf = gpd.read_file(file_path)
-                df = pd.DataFrame(gdf)  # Convert to regular DataFrame
                 
-                # Convert geometry to WKT string
-                df['geometry'] = df['geometry'].apply(lambda x: x.wkt)
+                # Check for None geometries and warn
+                if gdf.geometry.isnull().any():
+                    invalid_count = gdf.geometry.isnull().sum()
+                    warnings.warn(
+                        f"{filename} contains {invalid_count} rows with None geometry. "
+                        "These will be converted to empty strings in CSV."
+                    )
+                
+                # Convert to DataFrame and handle None geometries
+                df = pd.DataFrame(gdf)
+                df['geometry'] = df['geometry'].apply(
+                    lambda x: x.wkt if x is not None else ''
+                )
                 
                 # Save CSV
                 output_path = os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.csv")
@@ -51,9 +61,4 @@ def convert_shp_to_csv(input_dir, output_dir):
 
 convert_shp_to_csv(INPUT_DIR, OUTPUT_DIR)
 
-
 # In[ ]:
-
-
-
-
